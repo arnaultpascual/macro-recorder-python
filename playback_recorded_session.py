@@ -3,51 +3,77 @@ from pynput.mouse import Button as MouseButton, Controller as MouseController
 from pynput.keyboard import Key, Controller as KeyboardController
 from ast import literal_eval
 
+# Initialize controllers for mouse and keyboard actions
+mouse_controller = MouseController()
+keyboard_controller = KeyboardController()
+
+# Simulates a mouse click
+def mouse_click(parts):
+    x, y, button_name = int(parts[1]), int(parts[2]), parts[3]
+    button = MouseButton.left if 'left' in button_name else MouseButton.right
+    mouse_controller.position = (x, y)
+    mouse_controller.press(button)
+
+# Simulates releasing a mouse button
+def mouse_release(parts):
+    x, y, button_name = int(parts[1]), int(parts[2]), parts[3]
+    button = MouseButton.left if 'left' in button_name else MouseButton.right
+    mouse_controller.position = (x, y)
+    mouse_controller.release(button)
+
+# Handles mouse scroll actions
+def mouse_scroll(parts):
+    dx, dy = literal_eval(parts[1]), literal_eval(parts[2])
+    mouse_controller.scroll(dx, dy)
+
+# Initiates a key press action
+def key_press(parts):
+    handle_key_action(parts, "press")
+
+# Initiates a key release action
+def key_release(parts):
+    handle_key_action(parts, "release")
+
+# Helper to manage key press/release, supporting special keys
+def handle_key_action(parts, action_type):
+    key_str = ','.join(parts[1:-1])
+    try:
+        key = getattr(Key, key_str.split('.')[-1]) if key_str.startswith('Key.') else key_str.strip("'")
+        action = keyboard_controller.press if action_type == "press" else keyboard_controller.release
+        action(key)
+    except AttributeError:
+        print(f"Error with key: {key_str}. Key not found.")
+
+# Maps supported actions to their handlers
+action_functions = {
+    'mouse_click': mouse_click,
+    'mouse_release': mouse_release,
+    'mouse_scroll': mouse_scroll,
+    'key_press': key_press,
+    'key_release': key_release
+}
+
+# Replays actions from a specified file, managing time delays and action dispatch
 def replay_actions(filename):
-    mouse_controller = MouseController()
-    keyboard_controller = KeyboardController()
+    try:
+        with open(filename, 'r') as file:
+            previous_time = 0
+            for line in file:
+                parts = line.strip().split(',')
+                action, action_time = parts[0], float(parts[-1])
+                
+                time.sleep(action_time - previous_time)  # Delay execution to match recorded timing
+                previous_time = action_time
 
-    with open(filename, 'r') as file:
-        previous_time = 0
-        for line in file:
-            parts = line.strip().split(',')
-            action = parts[0]
-            action_time = float(parts[-1])
-
-            # Calculate the delay based on the recorded time
-            delay = action_time - previous_time
-            time.sleep(delay)
-            previous_time = action_time
-
-            if action in ['mouse_click', 'mouse_release']:
-                x, y, button_name = parts[1:4]
-                x, y = int(x), int(y)
-                button = MouseButton.left if 'left' in button_name else MouseButton.right
-                mouse_controller.position = (x, y)
-                if action == 'mouse_click':
-                    mouse_controller.press(button)
+                if action in action_functions:
+                    action_functions[action](parts)  # Dispatch to appropriate handler
                 else:
-                    mouse_controller.release(button)
-            elif action == 'mouse_scroll':
-                dx, dy = literal_eval(parts[1]), literal_eval(parts[2])
-                mouse_controller.scroll(dx, dy)
-            elif action in ['key_press', 'key_release']:
-                key_str = ','.join(parts[1:-1])  # Re-join the key parts in case it was split by commas
-                try:
-                    # Check if key_str corresponds to a special key
-                    if key_str.startswith('Key.'):
-                        key = getattr(Key, key_str[len('Key.'):])  # Extract and use special Key attribute
-                    else:
-                        # Directly use the character for regular keys
-                        key = key_str.replace("'", "")  # Remove any single quotes from the key string
-                        
-                    print(f"Attempting to {action} key: {key}")  # Debugging output
-                    if action == 'key_press':
-                        keyboard_controller.press(key)
-                    elif action == 'key_release':
-                        keyboard_controller.release(key)
-                except Exception as e:
-                    print(f"Error handling key {key_str}: {e}")
+                    print(f"Unsupported action: {action}")
+
+    except FileNotFoundError:
+        print(f"File not found: {filename}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
     replay_actions('recorded_actions.txt')

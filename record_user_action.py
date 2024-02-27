@@ -1,43 +1,74 @@
 import time
 from pynput import mouse, keyboard
-from pynput.mouse import Button as MouseButton
-from pynput.keyboard import Key, Controller as KeyboardController
-from pynput.mouse import Controller as MouseController
 
-# Global list to store actions
+# Global list to store user actions and the start time for the recording
 actions = []
 start_time = time.time()
 
 def on_click(x, y, button, pressed):
+    """
+    Handles mouse click and release events.
+    
+    Parameters:
+    - x, y: The position of the mouse cursor.
+    - button: Which mouse button was pressed or released.
+    - pressed: True if the button was pressed, False if released.
+    """
     action_type = 'mouse_click' if pressed else 'mouse_release'
-    actions.append((action_type, str(x), str(y), str(button), str(time.time() - start_time)))
+    actions.append((action_type, x, y, button, time.time() - start_time))
 
 def on_scroll(x, y, dx, dy):
-    actions.append(('mouse_scroll', str(x), str(y), str(dx), str(dy), str(time.time() - start_time)))
+    """
+    Handles mouse scroll events.
+    
+    Parameters:
+    - x, y: The position of the mouse cursor.
+    - dx, dy: The scroll distance in x (horizontal) and y (vertical) directions.
+    """
+    actions.append(('mouse_scroll', x, y, dx, dy, time.time() - start_time))
 
 def on_press(key):
-    if key == Key.esc:
-        # Stop listener
+    """
+    Handles key press events.
+    
+    Parameters:
+    - key: The key that was pressed.
+    """
+    if key == keyboard.Key.esc:
+        # Stop listener if escape key is pressed
         return False
     else:
-        actions.append(('key_press', str(key), str(time.time() - start_time)))
+        actions.append(('key_press', key, time.time() - start_time))
 
 def on_release(key):
-    actions.append(('key_release', str(key), str(time.time() - start_time)))
+    """
+    Handles key release events.
+    
+    Parameters:
+    - key: The key that was released.
+    """
+    actions.append(('key_release', key, time.time() - start_time))
 
 def start_listening():
-    # Start listening to mouse
-    with mouse.Listener(on_click=on_click, on_scroll=on_scroll) as listener_mouse:
-        # Start listening to keyboard
-        with keyboard.Listener(on_press=on_press, on_release=on_release) as listener_keyboard:
+    """
+    Starts listeners for both mouse and keyboard actions.
+    Records actions until the escape key is pressed.
+    """
+    try:
+        with mouse.Listener(on_click=on_click, on_scroll=on_scroll) as listener_mouse, \
+             keyboard.Listener(on_press=on_press, on_release=on_release) as listener_keyboard:
             print("Start recording... Press ESC to stop.")
-            listener_keyboard.join()
+            listener_keyboard.join()  # Wait until keyboard listener is stopped
 
-    # Saving actions to a file
-    with open('recorded_actions.txt', 'w') as file:
-        for action in actions:
-            file.write(','.join(map(str, action)) + '\n')
+        # Saving actions to a file safely
+        with open('recorded_actions.txt', 'w') as file:
+            for action in actions:
+                file.write(','.join(map(str, action)) + '\n')
 
-    print("Recording stopped and saved.")
+        print("Recording stopped and saved.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
-start_listening()
+# Entry point of the script
+if __name__ == "__main__":
+    start_listening()
