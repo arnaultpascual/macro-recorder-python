@@ -9,16 +9,16 @@ keyboard_controller = KeyboardController()
 
 # Simulates a mouse click
 def mouse_click(parts):
-    x, y, button_name = int(parts[1]), int(parts[2]), parts[3]
+    x, y, button_name = float(parts[1]), float(parts[2]), parts[3]
     button = MouseButton.left if 'left' in button_name else MouseButton.right
-    mouse_controller.position = (x, y)
+    mouse_controller.position = (round(x), round(y))
     mouse_controller.press(button)
 
 # Simulates releasing a mouse button
 def mouse_release(parts):
-    x, y, button_name = int(parts[1]), int(parts[2]), parts[3]
+    x, y, button_name = float(parts[1]), float(parts[2]), parts[3]
     button = MouseButton.left if 'left' in button_name else MouseButton.right
-    mouse_controller.position = (x, y)
+    mouse_controller.position = (round(x), round(y))
     mouse_controller.release(button)
 
 # Handles mouse scroll actions
